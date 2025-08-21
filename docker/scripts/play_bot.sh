@@ -38,6 +38,8 @@ prepare_character
 
 if [ "$IS_HEADFUL" == "1" ]; then
     start_gui
+else
+    start_headless_display
 fi
 start_bot
 sleep 1
@@ -73,7 +75,7 @@ else
         LOG "Running processes:"
         ps aux >>  "$LOG_GAME"
 
-        exit EXIT_CODE_REALTIME_OUTED
+        exit $EXIT_CODE_REALTIME_OUTED
     else
         LOG "Game finished within realtimeout limit." >> "$LOG_GAME"
     fi
