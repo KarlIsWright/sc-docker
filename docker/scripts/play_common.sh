@@ -86,7 +86,7 @@ function start_headless_display() {
 
     # Launch only Xvfb for headless mode
     LOG "Starting headless X display, saving logs to " "$LOG_XVFB"
-    Xvfb :0 -auth ~/.Xauthority -screen 0 640x480x24 >> "$LOG_XVFB" 2>&1 &
+    Xvfb :0 -screen 0 640x480x24 >> "$LOG_XVFB" 2>&1 &
     sleep 1
 }
 
@@ -102,7 +102,7 @@ function start_gui() {
 
     # Launch the GUI!
     LOG "Starting X, savings logs to " "$LOG_XVFB"
-    Xvfb :0 -auth ~/.Xauthority -screen 0 640x480x24 >> "$LOG_XVFB" 2>&1 &
+    Xvfb :0 -screen 0 640x480x24 >> "$LOG_XVFB" 2>&1 &
     sleep 1
 
     LOG "Starting VNC server" "$LOG_XVNC"

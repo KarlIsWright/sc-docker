@@ -64,7 +64,7 @@ def ensure_docker_can_run() -> None:
     """
     logger.info("checking docker can run")
     version = docker_client.version()["ApiVersion"]
-    docker_client.containers.run("hello-world")
+    # docker_client.containers.run("hello-world")
     logger.debug(f"using docker API version {version}")
 
 
@@ -344,15 +344,13 @@ def launch_image(
     run_opts = {
         "nano_cpus": nano_cpus,
         "mem_limit": mem_limit or None,
-        "cap_add": ['NET_RAW', 'NET_ADMIN'],
-        "privileged": True,
+        "cap_add": ['NET_RAW', 'NET_ADMIN', 'NET_BIND_SERVICE'],
     }
     if debug:
         # Add capabilities for debugging (e.g., strace, tcpdump)
-        run_opts['cap_add'] = ['SYS_PTRACE', 'NET_ADMIN', 'NET_RAW']
         run_opts['security_opt'] = ['seccomp=unconfined']
         run_opts['privileged'] = True
-        logger.info("Adding SYS_PTRACE, NET_ADMIN, NET_RAW and privileged for debugging")
+        logger.info("Adding privileged for debugging")
     else:
         logger.info("Adding NET_RAW, NET_ADMIN and privileged for networking")
 

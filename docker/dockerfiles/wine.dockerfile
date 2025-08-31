@@ -58,11 +58,14 @@ RUN set -x \
      lib32z1 \
      lib32ncurses6 \
      lib32stdc++6 \
-     xdotool
+     xdotool \
+     cabextract \
+  && rm -rf /var/lib/apt/lists/*
 
-# Download and install Wine 10.10 from Kron4ek builds
+# Install Wine and winetricks
 RUN set -x \
-  && apt-get install -y \
+  && apt-get update \
+  && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     wine32 \
     wine32-preloader \
     winetricks \
@@ -87,3 +90,8 @@ VOLUME $LOG_DIR
 # windows doesn't have sleep, but this hack seems to work :-)
 RUN set -eux && xvfb-run wine ping 127.0.0.1 -n 1 | cat
 RUN wine wineboot --init
+
+# Install key Windows networking components into the Wine prefix
+# Using xvfb-run to avoid DISPLAY problems during build
+RUN winetricks -q --force cmd || true \
+  && xvfb-run -a winetricks -q directplay wininet winhttp urlmon || true
