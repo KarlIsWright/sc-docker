@@ -15,6 +15,12 @@ fi
 echo "Auto-debug startup: waiting $DELAY_SECONDS seconds before starting network debugging..."
 sleep "$DELAY_SECONDS"
 
+# Start UDP relay to assist LAN discovery
+if [ -x /app/scripts/udp_lan_relay.sh ]; then
+    echo "Starting UDP LAN relay..."
+    /app/scripts/udp_lan_relay.sh &
+fi
+
 echo "Starting automatic network debugging..."
 /app/scripts/internal_network_debug.sh "$DEBUG_TIMEOUT" &
 

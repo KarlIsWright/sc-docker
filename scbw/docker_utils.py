@@ -6,6 +6,7 @@ import re
 import time
 import platform
 import subprocess
+import shutil
 from typing import Optional, List
 import time
 from pprint import pformat
@@ -25,7 +26,134 @@ logger = logging.getLogger(__name__)
 # disable docker package spam logging
 logging.getLogger('urllib3.connectionpool').propagate = False
 
-docker_client = docker.from_env()
+def get_container_runtime():
+    """
+    Detect and return the appropriate container runtime client using explicit sockets only.
+
+    Environment contract:
+    - SCBW_RUNTIME_DOCKER_ROOT: unix:///var/run/docker.sock if present
+    - SCBW_RUNTIME_PODMAN_ROOT: unix:///run/podman/podman.sock if present
+    - SCBW_RUNTIME_PODMAN_USER: unix://$XDG_RUNTIME_DIR/podman/podman.sock if present
+
+    Selection order when SCBW_CONTAINER_RUNTIME is NOT set:
+      docker-root -> podman-user -> podman-root
+
+    Override: Users can set SCBW_CONTAINER_RUNTIME to any of:
+      - the value of one of the runtime variables (recommended):
+          SCBW_CONTAINER_RUNTIME=$SCBW_RUNTIME_DOCKER_ROOT
+      - the name of one of the runtime variables:
+          SCBW_CONTAINER_RUNTIME=SCBW_RUNTIME_PODMAN_USER
+      - a friendly label: docker-root | podman-user | podman-root
+      - a direct socket URL (unix:///path) or filesystem path (/path/to.sock)
+    """
+    # Define env var names
+    ENV_DOCKER_ROOT = "SCBW_RUNTIME_DOCKER_ROOT"
+    ENV_PODMAN_ROOT = "SCBW_RUNTIME_PODMAN_ROOT"
+    ENV_PODMAN_USER = "SCBW_RUNTIME_PODMAN_USER"
+
+    def _url_for_socket(path: str) -> str:
+        return path if path.startswith("unix://") or path.startswith("tcp://") else f"unix://{path}"
+
+    def _ping_client(url: str):
+        client = docker.DockerClient(base_url=url)
+        client.ping()
+        return client
+
+    # Discover sockets
+    xdg_runtime = os.environ.get('XDG_RUNTIME_DIR', f"/run/user/{os.getuid() if hasattr(os, 'getuid') else 1000}")
+    docker_root_sock = "/var/run/docker.sock"
+    podman_root_sock = "/run/podman/podman.sock"
+    podman_user_sock = f"{xdg_runtime}/podman/podman.sock"
+
+    # Set or clear runtime env vars based on existence
+    def _set_runtime_env(var_name: str, sock_path: str):
+        if os.path.exists(sock_path):
+            os.environ[var_name] = _url_for_socket(sock_path)
+            return os.environ[var_name]
+        else:
+            # Do not leave stale values around
+            if var_name in os.environ:
+                os.environ.pop(var_name, None)
+            return None
+
+    runtime_urls = {
+        'docker-root': _set_runtime_env(ENV_DOCKER_ROOT, docker_root_sock),
+        'podman-root': _set_runtime_env(ENV_PODMAN_ROOT, podman_root_sock),
+        'podman-user': _set_runtime_env(ENV_PODMAN_USER, podman_user_sock),
+    }
+
+    # Resolve requested selection
+    requested = os.environ.get('SCBW_CONTAINER_RUNTIME', '').strip()
+
+    def _resolve_requested(req: str) -> (str, str):
+        """Return (label, url) or (None, None) if not resolvable."""
+        if not req:
+            return None, None
+        # If it's a variable name, dereference it
+        if req in (ENV_DOCKER_ROOT, ENV_PODMAN_ROOT, ENV_PODMAN_USER):
+            url = os.environ.get(req)
+            label_map = {
+                ENV_DOCKER_ROOT: 'docker-root',
+                ENV_PODMAN_ROOT: 'podman-root',
+                ENV_PODMAN_USER: 'podman-user',
+            }
+            return label_map[req], url
+        # Friendly labels
+        if req in runtime_urls:
+            return req, runtime_urls[req]
+        # If it looks like a URL or a filesystem path
+        if req.startswith('unix://') or req.startswith('tcp://'):
+            # Best-effort label inference
+            label = 'docker-root' if '/docker.sock' in req else ('podman-user' if '/podman/podman.sock' in req and xdg_runtime in req else ('podman-root' if '/podman/podman.sock' in req else 'custom'))
+            return label, req
+        if req.startswith('/'):
+            if os.path.exists(req):
+                return ('docker-root' if '/docker.sock' in req else ('podman-user' if '/podman/podman.sock' in req and xdg_runtime in req else ('podman-root' if '/podman/podman.sock' in req else 'custom')),
+                        _url_for_socket(req))
+            else:
+                return None, None
+        # Otherwise, not recognized
+        return None, None
+
+    label, url = _resolve_requested(requested)
+    if label and url:
+        try:
+            client = _ping_client(url)
+            logger.info(f"Using container runtime (from SCBW_CONTAINER_RUNTIME): {label} -> {url}")
+            return client, label
+        except Exception as e:
+            raise RuntimeError(f"SCBW_CONTAINER_RUNTIME is set but not usable: {requested}. Error: {e}")
+
+    if requested:
+        # Requested but could not resolve
+        raise RuntimeError(f"SCBW_CONTAINER_RUNTIME='{requested}' is not recognized.\n"
+                           f"Use one of: {ENV_DOCKER_ROOT}, {ENV_PODMAN_USER}, {ENV_PODMAN_ROOT},\n"
+                           f"labels: docker-root | podman-user | podman-root,\n"
+                           f"or a direct socket URL/path.")
+
+    # AUTO: try in preferred order with ping
+    for auto_label in ('docker-root', 'podman-user', 'podman-root'):
+        url = runtime_urls.get(auto_label)
+        if not url:
+            continue
+        try:
+            client = _ping_client(url)
+            os.environ['SCBW_CONTAINER_RUNTIME'] = url
+            logger.info(f"Using container runtime: {auto_label} -> {url}")
+            return client, auto_label
+        except Exception as e:
+            logger.debug(f"Runtime candidate {auto_label} not usable: {e}")
+
+    raise RuntimeError("No usable container runtime found. Tried docker-root, podman-user, podman-root.")
+
+# Initialize the container runtime
+try:
+    docker_client, container_runtime = get_container_runtime()
+    logger.info(f"Container runtime initialized: {container_runtime}")
+except Exception as e:
+    logger.error(f"Failed to initialize container runtime: {e}")
+    # No fallback to docker.from_env(); explicit sockets only
+    raise
 
 DOCKER_STARCRAFT_NETWORK = "sc_net"
 SUBNET_CIDR = "**********/16"
@@ -88,7 +216,7 @@ def ensure_local_net(
         output = docker_client.networks.create(
             DOCKER_STARCRAFT_NETWORK, 
             driver="bridge",
-            options={"isolate": "false"}
+            options={"isolate": "true"}
         ).short_id
     logger.debug(f"docker network id: {output}")
 
@@ -296,11 +424,9 @@ def launch_image(
     # Always set BWAPI_LAN_MODE with proper default for LAN multiplayer
     env["BWAPI_LAN_MODE"] = os.environ.get("BWAPI_LAN_MODE", "Local Area Network (UDP)")
     
-    # Add auto-debugging environment variables for debug containers
-    if debug:
-        env["AUTO_DEBUG"] = "true"
-        env["AUTO_DEBUG_DELAY"] = os.environ.get("AUTO_DEBUG_DELAY", "10")
-        env["AUTO_DEBUG_TIMEOUT"] = os.environ.get("AUTO_DEBUG_TIMEOUT", "120")
+    # Debug containers start normally by default - no automatic debugging
+    # All debugging tools are available via manual docker exec commands
+    # See DEBUG.md for usage instructions
 
     if isinstance(player, BotPlayer):
         # Only mount write directory, read and AI
@@ -355,17 +481,19 @@ def launch_image(
 
     run_opts = {
         "nano_cpus": nano_cpus,
-        "mem_limit": mem_limit or None,
-        "cap_add": ['NET_RAW', 'NET_ADMIN', 'NET_BIND_SERVICE'],
+        "mem_limit": mem_limit or None
     }
-    if debug:
-        # Add capabilities for debugging (e.g., strace, tcpdump)
-        run_opts['security_opt'] = ['seccomp=unconfined']
-        run_opts['privileged'] = True
-        logger.info("Adding privileged for debugging")
-    else:
-        logger.info("Adding NET_RAW, NET_ADMIN and privileged for networking")
-
+    """
+    ;run_opts['privileged'] = True
+    ;logger.info("Adding privileged for networking")
+    ;if debug:
+    ;    # Add capabilities for debugging (e.g., strace, tcpdump)
+    ;    run_opts['security_opt'] = ['seccomp=unconfined']
+    ;    run_opts['privileged'] = True
+    ;    logger.info("Adding privileged for debugging")
+    ;else:
+    ;    logger.info("Not adding capabilities for networking or debuging")
+    """
     # Launch container using the standard Docker client
     network_config = DOCKER_STARCRAFT_NETWORK
     
