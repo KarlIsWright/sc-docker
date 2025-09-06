@@ -37,26 +37,26 @@ RUN set -x \
     bridge-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy debugging scripts
-COPY --chown=starcraft:users scripts/internal_network_debug.sh /app/scripts/internal_network_debug.sh
-COPY --chown=starcraft:users scripts/internal_network_analysis.sh /app/scripts/internal_network_analysis.sh
-COPY --chown=starcraft:users scripts/auto_debug_startup.sh /app/scripts/auto_debug_startup.sh
-COPY --chown=starcraft:users scripts/udp_broadcast_receiver.sh /app/scripts/udp_broadcast_receiver.sh
-COPY --chown=starcraft:users scripts/udp_broadcast_sender.sh /app/scripts/udp_broadcast_sender.sh
-COPY --chown=starcraft:users scripts/udp_relay_manual.sh /app/scripts/udp_relay_manual.sh
+# Copy debugging scripts from debug subdirectory
+COPY --chown=starcraft:users scripts/debug/DEBUG_network_debug.sh /app/scripts/DEBUG_network_debug.sh
+COPY --chown=starcraft:users scripts/debug/DEBUG_network_analysis.sh /app/scripts/DEBUG_network_analysis.sh
+COPY --chown=starcraft:users scripts/debug/DEBUG_auto_startup.sh /app/scripts/DEBUG_auto_startup.sh
+COPY --chown=starcraft:users scripts/debug/DEBUG_udp_receiver.sh /app/scripts/DEBUG_udp_receiver.sh
+COPY --chown=starcraft:users scripts/debug/DEBUG_udp_sender.sh /app/scripts/DEBUG_udp_sender.sh
+COPY --chown=starcraft:users scripts/debug/DEBUG_udp_relay.sh /app/scripts/DEBUG_udp_relay.sh
 # These patch scripts may not exist in all forks; copy if present
-COPY --chown=starcraft:users scripts/patch_play_common.sh /app/scripts/patch_play_common.sh
-COPY --chown=starcraft:users scripts/patch_debug_gui.sh /app/scripts/patch_debug_gui.sh
+COPY --chown=starcraft:users scripts/debug/DEBUG_patch_play_common.sh /app/scripts/DEBUG_patch_play_common.sh
+COPY --chown=starcraft:users scripts/debug/DEBUG_patch_gui.sh /app/scripts/DEBUG_patch_gui.sh
 
 # Make scripts executable (ignore if missing)
-RUN chmod +x /app/scripts/internal_network_debug.sh \
-    && chmod +x /app/scripts/internal_network_analysis.sh \
-    && chmod +x /app/scripts/auto_debug_startup.sh \
-    && chmod +x /app/scripts/udp_broadcast_receiver.sh \
-    && chmod +x /app/scripts/udp_broadcast_sender.sh \
-    && chmod +x /app/scripts/udp_relay_manual.sh \
+RUN chmod +x /app/scripts/DEBUG_network_debug.sh \
+    && chmod +x /app/scripts/DEBUG_network_analysis.sh \
+    && chmod +x /app/scripts/DEBUG_auto_startup.sh \
+    && chmod +x /app/scripts/DEBUG_udp_receiver.sh \
+    && chmod +x /app/scripts/DEBUG_udp_sender.sh \
+    && chmod +x /app/scripts/DEBUG_udp_relay.sh \
     || true
-RUN chmod +x /app/scripts/patch_play_common.sh /app/scripts/patch_debug_gui.sh || true
+RUN chmod +x /app/scripts/DEBUG_patch_play_common.sh /app/scripts/DEBUG_patch_gui.sh || true
 
 # Add UDP LAN relay script used for LAN discovery and broadcast forwarding
 RUN echo '#!/bin/bash' > /app/scripts/udp_lan_relay.sh \

@@ -37,13 +37,13 @@ The debug container includes several pre-built scripts that can be run manually 
 ### UDP Network Debugging
 ```bash
 # Start UDP broadcast receiver (listens for broadcasts)
-/app/scripts/udp_broadcast_receiver.sh [port] [logfile]
+/app/scripts/DEBUG_udp_receiver.sh [port] [logfile]
 
 # Send UDP broadcast (tests broadcast sending)
-/app/scripts/udp_broadcast_sender.sh [port] [message] [target]
+/app/scripts/DEBUG_udp_sender.sh [port] [message] [target]
 
 # Start UDP relay (forwards broadcasts between containers)
-/app/scripts/udp_relay_manual.sh [port] [target_broadcast]
+/app/scripts/DEBUG_udp_relay.sh [port] [target_broadcast]
 
 # Start automatic UDP relay for LAN discovery (runs in background)
 /app/scripts/udp_lan_relay.sh
@@ -52,13 +52,13 @@ The debug container includes several pre-built scripts that can be run manually 
 ### System Debugging
 ```bash
 # Start comprehensive network debugging
-/app/scripts/internal_network_debug.sh [timeout_seconds]
+/app/scripts/DEBUG_network_debug.sh [timeout_seconds]
 
 # Start network analysis and packet capture
-/app/scripts/internal_network_analysis.sh
+/app/scripts/DEBUG_network_analysis.sh
 
 # Start automatic debugging (legacy - not recommended)
-/app/scripts/auto_debug_startup.sh
+/app/scripts/DEBUG_auto_startup.sh
 ```
 
 ## Environment Variables
@@ -89,13 +89,13 @@ docker run --rm --network sc_net -p 5900:5900 starcraft:dbg /app/play_bot.sh --h
 scbw.play --bots Bot1 Bot2 --debug
 
 # In another terminal, access running container for debugging
-docker exec -it GAME_XXX_0_Bot1 /app/scripts/udp_relay_manual.sh 6111
+docker exec -it GAME_XXX_0_Bot1 /app/scripts/DEBUG_udp_relay.sh 6111
 
 # Or run broadcast receiver to monitor UDP traffic
-docker exec -it GAME_XXX_0_Bot1 /app/scripts/udp_broadcast_receiver.sh 6111
+docker exec -it GAME_XXX_0_Bot1 /app/scripts/DEBUG_udp_receiver.sh 6111
 
 # Or start comprehensive network debugging
-docker exec -it GAME_XXX_0_Bot1 /app/scripts/internal_network_debug.sh 60
+docker exec -it GAME_XXX_0_Bot1 /app/scripts/DEBUG_network_debug.sh 60
 ```
 
 ### Advanced Network Testing

@@ -159,15 +159,15 @@ Develop a Docker network plugin that specifically allows broadcast traffic.
 ### Added Files
 - `DEBUG.md` - Comprehensive debugging documentation
 - `docker/scripts/hook_init.sh` - UDP relay initialization hook
-- `docker/scripts/udp_broadcast_receiver.sh` - UDP broadcast testing tool
-- `docker/scripts/udp_broadcast_sender.sh` - UDP broadcast sending tool
-- `docker/scripts/udp_relay_manual.sh` - Manual UDP relay script
+- `docker/scripts/debug/DEBUG_udp_receiver.sh` - UDP broadcast testing tool
+- `docker/scripts/debug/DEBUG_udp_sender.sh` - UDP broadcast sending tool
+- `docker/scripts/debug/DEBUG_udp_relay.sh` - Manual UDP relay script
 - Various test scripts for network testing
 
 ### Modified Files
 - `docker/dockerfiles/dbg.dockerfile` - Cleaned up debug container, removed auto-debugging
 - `scbw/docker_utils.py` - Improved container runtime detection, removed AUTO_DEBUG
-- `docker/scripts/auto_debug_startup.sh` - Made debugging optional
+- `docker/scripts/debug/DEBUG_auto_startup.sh` - Made debugging optional
 - `docker/build_images.sh` - Fixed build process for rootful Docker
 
 ### Key Improvements
