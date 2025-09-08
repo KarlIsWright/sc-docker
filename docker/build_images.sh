@@ -11,19 +11,19 @@ cd "$SCRIPT_DIR"
 # Engine selection: prefer rootful Docker, then rootless Podman, then rootful Podman.
 # Respect SCBW_CONTAINER_RUNTIME as a manual override (socket URL/path or friendly label).
 select_engine() {
-  local docker_sock="/var/run/docker.sock"
   local podman_user_sock="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/podman/podman.sock"
   local podman_root_sock="/run/podman/podman.sock"
+  local docker_sock="/var/run/docker.sock"
 
   # Map friendly labels to sockets
   _label_to_url() {
     case "$1" in
-      docker-root|SCBW_RUNTIME_DOCKER_ROOT)
-        echo "unix://$docker_sock" ;;
       podman-user|SCBW_RUNTIME_PODMAN_USER)
         echo "unix://$podman_user_sock" ;;
       podman-root|SCBW_RUNTIME_PODMAN_ROOT)
         echo "unix://$podman_root_sock" ;;
+      docker-root|SCBW_RUNTIME_DOCKER_ROOT)
+        echo "unix://$docker_sock" ;;
       *)
         echo "" ;;
     esac
@@ -68,12 +68,7 @@ select_engine() {
     fi
   fi
 
-  # 2) Auto mode: docker-root -> podman-user -> podman-root
-  if [[ -S "$docker_sock" ]] && _test_engine "unix://$docker_sock"; then
-    export DOCKER_HOST="unix://$docker_sock"
-    echo "INFO: Using rootful Docker at $DOCKER_HOST for image builds (preferred)." >&2
-    return 0
-  fi
+  # 2) Auto mode: podman-user -> podman-root -> docker-root
   if [[ -S "$podman_user_sock" ]] && _test_engine "unix://$podman_user_sock"; then
     export DOCKER_HOST="unix://$podman_user_sock"
     echo "WARN: Falling back to rootless Podman at $DOCKER_HOST for builds (LAN/broadcast may be limited)." >&2
@@ -82,6 +77,11 @@ select_engine() {
   if [[ -S "$podman_root_sock" ]] && _test_engine "unix://$podman_root_sock"; then
     export DOCKER_HOST="unix://$podman_root_sock"
     echo "INFO: Falling back to rootful Podman at $DOCKER_HOST for builds." >&2
+    return 0
+  fi
+  if [[ -S "$docker_sock" ]] && _test_engine "unix://$docker_sock"; then
+    export DOCKER_HOST="unix://$docker_sock"
+    echo "INFO: Using rootful Docker at $DOCKER_HOST for image builds (preferred)." >&2
     return 0
   fi
 

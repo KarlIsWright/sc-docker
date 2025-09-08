@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -eux
 
+# Set default value for AUTO_DEBUG if not set
+: ${AUTO_DEBUG:=0}
+
 if [ "$1" == "--headful" ]; then
     IS_HEADFUL="1"
 else
@@ -14,6 +17,11 @@ DATE=$(date +%Y-%m-%d)
 REPLAY_FILE="${GAME_NAME}_${NTH_PLAYER}.rep"
 
 . play_common.sh
+
+# Call init hook if it exists (for UDP relay and other initialization)
+if [ -f "hook_init.sh" ]; then
+    . hook_init.sh
+fi
 
 check_bot_requirements
 

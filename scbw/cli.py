@@ -163,7 +163,9 @@ parser.add_argument('-v', "--version", action='store_true', dest='show_version',
 
 
 def _image_version_up_to_date():
-    client = docker.from_env()
+    # Prefer the same container runtime as the main program (Docker first, then Podman)
+    from scbw.docker_utils import docker_client as _preferred_client
+    client = _preferred_client
     return any(tag == SC_IMAGE for image in client.images.list('starcraft') for tag in image.tags)
 
 

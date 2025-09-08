@@ -132,7 +132,7 @@ def get_container_runtime():
                            f"or a direct socket URL/path.")
 
     # AUTO: try in preferred order with ping
-    for auto_label in ('docker-root', 'podman-user', 'podman-root'):
+    for auto_label in ('podman-user', 'podman-root', 'docker-root'):
         url = runtime_urls.get(auto_label)
         if not url:
             continue
