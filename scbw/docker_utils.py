@@ -144,7 +144,7 @@ def get_container_runtime():
         except Exception as e:
             logger.debug(f"Runtime candidate {auto_label} not usable: {e}")
 
-    raise RuntimeError("No usable container runtime found. Tried docker-root, podman-user, podman-root.")
+    raise RuntimeError("No usable container runtime found. Tried podman-user, docker-root, podman-root.")
 
 # Initialize the container runtime
 try:

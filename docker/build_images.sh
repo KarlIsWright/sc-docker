@@ -71,17 +71,17 @@ select_engine() {
   # 2) Auto mode: podman-user -> podman-root -> docker-root
   if [[ -S "$podman_user_sock" ]] && _test_engine "unix://$podman_user_sock"; then
     export DOCKER_HOST="unix://$podman_user_sock"
-    echo "WARN: Falling back to rootless Podman at $DOCKER_HOST for builds (LAN/broadcast may be limited)." >&2
+    echo "INFO: Using rootless Podman at $DOCKER_HOST for builds." >&2
     return 0
   fi
   if [[ -S "$podman_root_sock" ]] && _test_engine "unix://$podman_root_sock"; then
     export DOCKER_HOST="unix://$podman_root_sock"
-    echo "INFO: Falling back to rootful Podman at $DOCKER_HOST for builds." >&2
+    echo "INFO: Using rootful Podman at $DOCKER_HOST for builds." >&2
     return 0
   fi
   if [[ -S "$docker_sock" ]] && _test_engine "unix://$docker_sock"; then
     export DOCKER_HOST="unix://$docker_sock"
-    echo "INFO: Using rootful Docker at $DOCKER_HOST for image builds (preferred)." >&2
+    echo "INFO: Using rootful Docker at $DOCKER_HOST for image builds." >&2
     return 0
   fi
 
